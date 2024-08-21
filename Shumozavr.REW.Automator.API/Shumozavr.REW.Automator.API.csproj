@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+<!--        <PublishTrimmed>true</PublishTrimmed>-->
+<!--        <TrimMode>partial</TrimMode>-->
+<!--        <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>-->
+        
+    </PropertyGroup>
+
+    <ItemGroup>
+<!--        <TrimmerRootAssembly Include="Swashbuckle.AspNetCore.SwaggerUI" />-->
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.6"/>
+        <PackageReference Include="Microsoft.Extensions.Compliance.Redaction" Version="8.8.0" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Http.Diagnostics" Version="8.8.0" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Shumozavr.REW.Automator\Shumozavr.REW.Automator.csproj" />
+      <ProjectReference Include="..\Shumozavr.REW.Client\Shumozavr.REW.Client.csproj" />
+    </ItemGroup>
+
+</Project>
