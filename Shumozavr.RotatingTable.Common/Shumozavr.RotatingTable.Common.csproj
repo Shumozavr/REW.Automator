@@ -9,9 +9,5 @@
     <ItemGroup>
       <ProjectReference Include="..\Shumozavr.Common\Shumozavr.Common.csproj" />
     </ItemGroup>
-    
-    <ItemGroup>
-        <PackageReference Include="System.IO.Ports" Version="8.0.0" />
-    </ItemGroup>
 
 </Project>

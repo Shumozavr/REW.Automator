@@ -28,10 +28,8 @@ builder.Services.AddHttpLogging(
         o.LoggingFields = HttpLoggingFields.All;
     });
 
-builder.Services.AddDefaultOptions<RewClientSettings>();
-builder.Services.AddDefaultOptions<RotatingTableSettings>();
-builder.Services.AddRewClient(p => p.GetRequiredService<IOptions<RewClientSettings>>());
-ServiceCollectionExtensions.AddRotatingTableClient(builder.Services, p => p.GetRequiredService<IOptions<RotatingTableSettings>>());
+builder.Services.AddRewClient(c => c.GetSection(RewClientSettings.OptionsKey));
+builder.Services.AddRotatingTableClient(c => c.GetSection(RotatingTableClientSettings.OptionsKey));
 builder.Services.AddHostedService<SubscriptionService>();
 
 var app = builder.Build();

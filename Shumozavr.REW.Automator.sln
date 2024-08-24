@@ -16,7 +16,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shumozavr.RotatingTable.Com
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "RotatingTable", "RotatingTable", "{F745025D-3303-4FF3-AF07-A72E3631B3EB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shumozavr.RotatingTable.IntegrationTests", "Shumozavr.RotatingTable.IntegrationTests\Shumozavr.RotatingTable.IntegrationTests.csproj", "{C4E30DC8-57D0-4CD3-89AF-8E58F8983ED6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shumozavr.RotatingTable.Tests", "Shumozavr.RotatingTable.Tests\Shumozavr.RotatingTable.Tests.csproj", "{C4E30DC8-57D0-4CD3-89AF-8E58F8983ED6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

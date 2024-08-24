@@ -1,6 +1,6 @@
 ﻿namespace Shumozavr.RotatingTable.Client;
 
-public interface IRotatingTableClient : IDisposable
+public interface IRotatingTableClient : IAsyncDisposable
 {
     public Task<IAsyncEnumerable<double>> StartRotating(double angle, CancellationToken cancellationToken);
     /// <summary>

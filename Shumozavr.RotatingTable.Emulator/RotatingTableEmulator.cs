@@ -1,60 +1,43 @@
-﻿using System.IO.Ports;
+﻿using System.Globalization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Shumozavr.Common;
+using Shumozavr.Common.SerialPorts;
 using Shumozavr.RotatingTable.Common;
 
 namespace Shumozavr.RotatingTable.Emulator;
 
-public class RotatingTableEmulator : IDisposable
+public class RotatingTableEmulator : BaseRotatingTableDriver, IAsyncDisposable
 {
-    private readonly SerialPort _tablePort;
     private readonly ILogger<RotatingTableEmulator> _logger;
+    private readonly IOptionsMonitor<RotatingTableEmulatorSettings> _settings;
     private int _acceleration = 1;
     private readonly SemaphoreSlim _commandLock = new(1, 1);
-    private readonly CancellationTokenSource _rotatingCt;
+    private CancellationTokenSource? _rotatingCt;
+    private readonly Task _processTask;
+    public Task? RotatingTask;
+    public Func<int, double> GetRotatingStep { get; set; } = angleToRotate => angleToRotate / 5;
+    public Func<Task> RotatingDelay { get; set; } = () => Task.Delay(TimeSpan.FromMilliseconds(300));
+    private readonly CancellationTokenSource _processCt;
 
     public RotatingTableEmulator(
-        ILogger<RotatingTableEmulator> logger)
+        ILogger<RotatingTableEmulator> logger,
+        IOptionsMonitor<RotatingTableEmulatorSettings> settings,
+        [FromKeyedServices(nameof(RotatingTableEmulator))]ISerialPort serialPort) : base(logger, serialPort)
     {
-        _tablePort = tablePort;
         _logger = logger;
-        _rotatingCt = new CancellationTokenSource();
-
-        _tablePort.DataReceived += OnDataReceived;
-        _tablePort.ErrorReceived += OnErrorReceived;
-    }
-    
-    protected virtual void OnErrorReceived(object sender, SerialErrorReceivedEventArgs args)
-    {
-        _logger.LogError("Error received: {EventType}", args.EventType);
-    }
-
-    protected virtual async void OnDataReceived(object sender, SerialDataReceivedEventArgs args)
-    {
-        _logger.LogTrace("Data received: {EventType}", args.EventType);
-        try
-        {
-            switch (args.EventType)
+        _settings = settings;
+        _processCt = new CancellationTokenSource();
+        _processTask = Task.Run(
+            async () =>
             {
-                case SerialData.Chars:
+                using var subscription = await TablePort.Subscribe();
+                await foreach (var token in subscription.MessagesReader.ReadAllAsync(_processCt.Token))
                 {
-                    var message = _tablePort.ReadLine();
-                    await Handle(message);
-                    _logger.LogTrace("Message: {portMessage}", message);
-
-                    break;
+                    await Handle(token);
                 }
-                case SerialData.Eof:
-                    _logger.LogInformation("Serial port received EOF");
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(args.EventType), args.EventType, null);
-            }
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Something went wrong handling table port");
-        }
+            });
     }
 
     private async Task Handle(string token)
@@ -64,46 +47,53 @@ public class RotatingTableEmulator : IDisposable
             case "GET ACC":
                 using (await AcquireCommandLock())
                 {
-                    _tablePort.WriteLine(_acceleration.ToString());
+                    TablePort.SendCommand(_acceleration.ToString());
                 }
 
                 break;
-            case not null when token.StartsWith("SET ACC") && int.TryParse(token["SET ACC".Length..], out var acceleration):
+            case not null when token.StartsWith("SET ACC") && int.TryParse(token["SET ACC".Length..], CultureInfo.InvariantCulture, out var acceleration):
                 using (await AcquireCommandLock())
                 {
                     _acceleration = acceleration;
-                    _tablePort.WriteLine("OK");
+                    TablePort.SendCommand("OK");
                 }
 
                 break;
-            case not null when token.StartsWith("FM") && int.TryParse(token["FM".Length..], out var desiredAngle):
+            case not null when token.StartsWith("FM") && int.TryParse(token["FM".Length..], CultureInfo.InvariantCulture, out var desiredAngle):
                 using (await AcquireCommandLock())
                 {
-                    _tablePort.WriteLine("OK");
+                    TablePort.SendCommand("OK");
                 }
 
-                Task.Run(async () =>
+                if (RotatingTask is { IsCompleted: false })
+                {
+                    throw new InvalidOperationException("RotatingTask must be completed to proceed");
+                }
+                _rotatingCt?.Dispose();
+                _rotatingCt = CancellationTokenSource.CreateLinkedTokenSource(_processCt.Token);
+                RotatingTask = Task.Run(async () =>
                 {
                     try
                     {
-                        for (var currentAngle = 0; currentAngle < desiredAngle; currentAngle += desiredAngle / 5)
+                        var currentAngle = 0d;
+                        for (;currentAngle < desiredAngle; currentAngle += Math.Min(desiredAngle - currentAngle, GetRotatingStep(desiredAngle)))
                         {
                             if (_rotatingCt.IsCancellationRequested)
                             {
-                                _rotatingCt.TryReset();
                                 break;
                             }
 
-                            _tablePort.WriteLine($"POS {currentAngle}");
-                            await Task.Delay(300);
+                            TablePort.SendCommand($"POS {currentAngle}");
+                            await RotatingDelay();
                         }
+                        TablePort.SendCommand($"POS {currentAngle}");
 
-                        _tablePort.WriteLine("END");
+                        TablePort.SendCommand("END");
                     }
                     catch (Exception e)
                     {
                         _logger.LogError(e, "Something went wrong handling rotating command");
-                        _tablePort.WriteLine("END");
+                        TablePort.SendCommand("END");
                     }
                 });
                 break;
@@ -111,31 +101,61 @@ public class RotatingTableEmulator : IDisposable
             case "STOP":
                 using (await AcquireCommandLock())
                 {
+                    if (_rotatingCt == null)
+                    {
+                        throw new InvalidOperationException("Rotating CT must be initialized");
+                    }
                     _rotatingCt.Cancel();
-                    _tablePort.WriteLine("OK");
+                    TablePort.SendCommand("OK");
                 }
 
                 break;
         }
     }
 
-    public void Dispose()
-    {
-        _tablePort.DataReceived -= OnDataReceived;
-        _tablePort.ErrorReceived -= OnErrorReceived;
-        _tablePort.Dispose();
-    }
-
-    protected async Task<LockWrapper> AcquireCommandLock()
+    protected override Task<LockWrapper> AcquireCommandLock()
     {
         try
         {
-            return await LockWrapper.LockOrThrow(_commandLock);
+            return base.AcquireCommandLock();
         }
-        catch (Exception e)
+        catch
         {
-            _tablePort.WriteLine("ERR");
-            throw new InvalidOperationException("Unable to start multiple commands simultaneously");
+            TablePort.SendCommand("ERR");
+            throw;
         }
+    }
+
+    protected virtual async ValueTask DisposeAsyncCore()
+    {
+        await CastAndDispose(_commandLock);
+        await CastAndDispose(_rotatingCt);
+        await CastAndDispose(RotatingTask);
+        await CastAndDispose(_processTask);
+        await CastAndDispose(_processCt);
+
+        return;
+
+        static async ValueTask CastAndDispose(IDisposable? resource)
+        {
+            switch (resource)
+            {
+                case null:
+                    return;
+                case IAsyncDisposable resourceAsyncDisposable:
+                    await resourceAsyncDisposable.DisposeAsync();
+                    break;
+                default:
+                    resource.Dispose();
+                    break;
+            }
+        }
+    }
+
+    public sealed override async ValueTask DisposeAsync()
+    {
+        await DisposeAsyncCore();
+        await base.DisposeAsync();
+        GC.SuppressFinalize(this);
     }
 }
