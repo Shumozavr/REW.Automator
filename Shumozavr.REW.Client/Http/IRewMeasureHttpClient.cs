@@ -14,4 +14,7 @@ public interface IRewMeasureHttpClient
 
     [Post("/measure/command")]
     public Task ExecuteCommand(object command, CancellationToken cancellationToken);
+
+    [Post("/measure/sweep/configuration")]
+    public Task SweepConfigure(SweepConfigurationRequest request, CancellationToken cancellationToken);
 }

@@ -29,6 +29,7 @@ public sealed class SerialPortWrapper : ISerialPort
 
     public void SendCommand(string command)
     {
+        _logger.LogInformation("Sending command: {command}", command);
         _tablePort.WriteLine(command);
     }
 
@@ -37,8 +38,14 @@ public sealed class SerialPortWrapper : ISerialPort
         return _tableMessagesBus.Subscribe();
     }
 
+    private bool _disposed = false;
     public async ValueTask DisposeAsync()
     {
+        if (_disposed)
+        {
+            return;
+        }
+        _disposed = true;
         await CastAndDispose(_tablePort);
         await CastAndDispose(_commandLock);
 
@@ -71,7 +78,7 @@ public sealed class SerialPortWrapper : ISerialPort
                 {
                     var message = _tablePort.ReadLine();
 
-                    _logger.LogTrace("Message: {portMessage}", message);
+                    _logger.LogInformation("Message: {portMessage}", message);
                     _tableMessagesBus.Publish(message);
                     break;
                 }

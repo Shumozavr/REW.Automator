@@ -121,6 +121,10 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
 
     public async Task Rotate(double angle, CancellationToken cancellationToken)
     {
+        if (Math.Abs(angle) < 0.0001)
+        {
+            return;
+        }
         await foreach (var _ in (await StartRotating(angle, cancellationToken)).WithCancellation(cancellationToken))
         {
         }

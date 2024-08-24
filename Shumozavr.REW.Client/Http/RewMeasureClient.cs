@@ -1,4 +1,5 @@
 ﻿using System.Threading.Channels;
+using Shumozavr.Common.Messaging;
 using Shumozavr.REW.Client.Extensions;
 using Shumozavr.REW.Client.Http.Models;
 using Shumozavr.REW.Client.Http.Models.Measure;
@@ -8,12 +9,12 @@ namespace Shumozavr.REW.Client.Http;
 public class RewMeasureClient
 {
     private readonly IRewMeasureHttpClient _client;
-    private readonly Channel<RewMessage> _rewMessages;
+    private readonly IEventBus<RewMessage> _eventBus;
 
-    public RewMeasureClient(IRewMeasureHttpClient client)
+    public RewMeasureClient(IRewMeasureHttpClient client, EventBusFactory eventBusFactory)
     {
         _client = client;
-        _rewMessages = Channel.CreateUnbounded<RewMessage>();
+        _eventBus = eventBusFactory.Create<RewMessage>();
     }
 
     public async Task SubscribeOnEvents(Uri callbackUri, CancellationToken cancellationToken)
@@ -21,21 +22,28 @@ public class RewMeasureClient
         await _client.SubscribeOnEvents(new SubscribeRequest(callbackUri.ToString()), cancellationToken);
     }
 
-    public async Task Callback(RewMessage message, CancellationToken cancellationToken)
+    public async Task SweepConfigure(SweepConfigurationRequest request, CancellationToken cancellationToken)
     {
-        await _rewMessages.Writer.WriteAsync(message, cancellationToken);
+        await _client.SweepConfigure(request, cancellationToken);
     }
 
-    public async Task<string> Measure(string title, CancellationToken cancellationToken)
+    public Task Callback(RewMessage message, CancellationToken cancellationToken)
     {
-        await _client.SetMeasureName(new SetMeasureRequest(title), cancellationToken);
-        // TODO: Error handling?
-        var resultTask = _rewMessages.WaitForMessage("100% Measurement complete", cancellationToken);
+        // TODO: надо замутить ивентбас чтобы не держать сообщения если обработчиков нету
+        _eventBus.Publish(message);
+        return Task.CompletedTask;
+    }
+
+    public async Task Measure(string title, string length, CancellationToken cancellationToken)
+    {
+        using var subscription = await _eventBus.Subscribe();
+        await _client.SetMeasureName(new SetMeasureRequest(title, "Use as entered"), cancellationToken);
+        await _client.SweepConfigure(new SweepConfigurationRequest(length), cancellationToken);
 
         var command = new { command = "SPL" };
         await _client.ExecuteCommand(command, cancellationToken);
-        await resultTask;
-        // id
-        return "1";
+
+        // TODO: Error handling?
+        await subscription.WaitForMessage("100% Measurement complete", cancellationToken);
     }
 }

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Shumozavr.Common.Messaging;
 using Shumozavr.Common.SerialPorts;
+using Shumozavr.Common.SerialPorts.Mock;
 
 namespace Shumozavr.Common;
 
@@ -52,6 +53,24 @@ public static class ServiceCollectionExtensions
             (provider, _) => ActivatorUtilities.CreateInstance<SerialPortWrapper>(
                 provider,
                 serviceKey));
+        return services;
+    }
+
+    public static IServiceCollection ReplaceSerialPortToMock<TClient, TServer>(this IServiceCollection services)
+    {
+        services.RemoveAll<ISerialPort>();
+
+        var service1Key = typeof(TClient).Name;
+        var service2Key = typeof(TServer).Name;
+
+        services.AddSingleton<SerialPortMock>();
+        services.AddKeyedTransient<ISerialPort>(
+            service1Key,
+            (provider, _) => provider.GetRequiredService<SerialPortMock>().ClientEnd);
+
+        services.AddKeyedTransient<ISerialPort>(
+            service2Key,
+            (provider, _) => provider.GetRequiredService<SerialPortMock>().ServerEnd);
         return services;
     }
 }

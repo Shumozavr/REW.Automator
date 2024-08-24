@@ -17,7 +17,7 @@ public class RotatingTableEmulator : BaseRotatingTableDriver, IAsyncDisposable
     private CancellationTokenSource? _rotatingCt;
     private readonly Task _processTask;
     public Task? RotatingTask;
-    public Func<int, double> GetRotatingStep { get; set; } = angleToRotate => angleToRotate / 5;
+    public Func<int, double> GetRotatingStep { get; set; } = angleToRotate => angleToRotate / 5d;
     public Func<Task> RotatingDelay { get; set; } = () => Task.Delay(TimeSpan.FromMilliseconds(300));
     private readonly CancellationTokenSource _processCt;
 
@@ -42,6 +42,7 @@ public class RotatingTableEmulator : BaseRotatingTableDriver, IAsyncDisposable
 
     private async Task Handle(string token)
     {
+        _logger.LogInformation("handling {token}", token);
         switch (token)
         {
             case "GET ACC":
@@ -75,24 +76,30 @@ public class RotatingTableEmulator : BaseRotatingTableDriver, IAsyncDisposable
                 {
                     try
                     {
-                        var currentAngle = 0d;
-                        for (;currentAngle < desiredAngle; currentAngle += Math.Min(desiredAngle - currentAngle, GetRotatingStep(desiredAngle)))
+                        var angle = 0d;
+                        while (angle < desiredAngle)
                         {
-                            if (_rotatingCt.IsCancellationRequested)
+                            _logger.LogInformation("current angle {angle}", angle);
+                            if (_rotatingCt.Token.IsCancellationRequested)
                             {
-                                break;
+                                return;
                             }
 
-                            TablePort.SendCommand($"POS {currentAngle}");
+                            var step = Math.Min(GetRotatingStep(desiredAngle), desiredAngle - angle);
+                            TablePort.SendCommand($"POS {angle}");
                             await RotatingDelay();
-                        }
-                        TablePort.SendCommand($"POS {currentAngle}");
 
-                        TablePort.SendCommand("END");
+                            angle += step;
+                        }
+                        TablePort.SendCommand($"POS {angle}");
+                        _logger.LogInformation("current angle {angle}", angle);
                     }
                     catch (Exception e)
                     {
                         _logger.LogError(e, "Something went wrong handling rotating command");
+                    }
+                    finally
+                    {
                         TablePort.SendCommand("END");
                     }
                 });
@@ -128,6 +135,31 @@ public class RotatingTableEmulator : BaseRotatingTableDriver, IAsyncDisposable
 
     protected virtual async ValueTask DisposeAsyncCore()
     {
+        try
+        {
+            if (RotatingTask is { IsCompleted: false })
+            {
+                _rotatingCt?.Cancel();
+                await RotatingTask;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+
+        try
+        {
+            if (_processTask is { IsCompleted: false })
+            {
+                _processCt.Cancel();
+                await _processTask;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+
+
         await CastAndDispose(_commandLock);
         await CastAndDispose(_rotatingCt);
         await CastAndDispose(RotatingTask);
@@ -152,8 +184,14 @@ public class RotatingTableEmulator : BaseRotatingTableDriver, IAsyncDisposable
         }
     }
 
+    private bool _disposed = false;
     public sealed override async ValueTask DisposeAsync()
     {
+        if (_disposed)
+        {
+            return;
+        }
+        _disposed = true;
         await DisposeAsyncCore();
         await base.DisposeAsync();
         GC.SuppressFinalize(this);

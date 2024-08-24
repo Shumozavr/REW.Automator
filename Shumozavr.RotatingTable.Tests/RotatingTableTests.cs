@@ -27,15 +27,19 @@ public class RotatingTableTests : IClassFixture<RotatingTableFixture>
         Assert.Equal(expectedAcceleration, acceleration);
     }
 
-    [Fact]
-    public async Task RotatingTest()
+    [Theory]
+    [InlineData(30, 5.5, new[] {0d, 5.5, 11, 16.5, 22.0, 27.5, 30})]
+    [InlineData(1, 33, new[] {0d, 1})]
+    [InlineData(100, 33, new[] {0d, 33, 66, 99, 100})]
+    public async Task RotatingTest(double expectedAngle, double step, double[] expected)
     {
-        _fixture.Emulator.GetRotatingStep = _ => 5.5;
+        _fixture.Emulator.GetRotatingStep = _ => step;
+
         _fixture.Emulator.RotatingDelay = () => Task.Delay(TimeSpan.FromMilliseconds(100));
-        var positions = (await _fixture.Client.StartRotating(30, CancellationToken.None)).ToBlockingEnumerable();
+        var positions = (await _fixture.Client.StartRotating(expectedAngle, CancellationToken.None)).ToBlockingEnumerable();
         var precision = 0.1;
         positions.Should().BeEquivalentTo(
-            [0, 5.5, 11, 16.5, 22.0, 27.5, 30],
+            expected,
             WithPrecision(precision));
     }
 
@@ -72,7 +76,7 @@ public class RotatingTableTests : IClassFixture<RotatingTableFixture>
 
         var precision = 0.1;
         positions.Should().BeEquivalentTo(
-            [0, 5, 10, 15, 20],
+            [0, 5, 10, 15],
             WithPrecision(precision));
     }
 

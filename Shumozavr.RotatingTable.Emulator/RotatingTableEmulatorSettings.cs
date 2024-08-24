@@ -9,5 +9,9 @@ public class RotatingTableEmulatorSettings : IOptionsValue
 {
     public static string OptionsKey => "RotatingTableEmulator";
 
+    public bool Enabled { get; set; }
+
+    public bool UseMock { get; set; }
+
     [ValidateObjectMembers] [Required] public SerialPortSettings SerialPort { get; set; } = default!;
 }

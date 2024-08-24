@@ -33,8 +33,14 @@ public abstract class BaseRotatingTableDriver : IAsyncDisposable
         }
     }
 
+    private bool _disposed = false;
     public virtual async ValueTask DisposeAsync()
     {
+        if (_disposed)
+        {
+            return;
+        }
+        _disposed = true;
         await TablePort.DisposeAsync();
         _commandLock.Dispose();
     }

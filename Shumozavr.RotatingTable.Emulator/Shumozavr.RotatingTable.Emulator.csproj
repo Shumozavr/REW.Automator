@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Shumozavr.Common\Shumozavr.Common.csproj"/>
+        <ProjectReference Include="..\Shumozavr.RotatingTable.Client\Shumozavr.RotatingTable.Client.csproj" />
         <ProjectReference Include="..\Shumozavr.RotatingTable.Common\Shumozavr.RotatingTable.Common.csproj" />
     </ItemGroup>
 

@@ -25,6 +25,7 @@ public class InMemoryEventBus<TMessage> : IEventBus<TMessage>
     }
     public void Publish(TMessage message)
     {
+        _logger.LogInformation("publishing message {token}", message);
         foreach (var subscription in _subscriptions)
         {
             if (!subscription.Writer.TryWrite(message))
@@ -40,8 +41,10 @@ public class InMemoryEventBus<TMessage> : IEventBus<TMessage>
         var subscription = new Subscription<TMessage>(
             channel.Reader,
             disposeAction: () => {
+                _logger.LogTrace("disposing subscription");
                 _subscriptions.Remove(channel);
                 channel.Writer.TryComplete();
+                _logger.LogTrace("subscription disposed");
             });
 
         _subscriptions.Add(channel);
