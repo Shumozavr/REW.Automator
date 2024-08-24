@@ -2,7 +2,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shumozavr.REW.Automator", "Shumozavr.REW.Automator\Shumozavr.REW.Automator.csproj", "{E7F8F8C7-0195-4023-823A-0AA26FDD6A71}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shumozavr.REW.RotatingTableClient", "Shumozavr.REW.RotatingTableClient\Shumozavr.REW.RotatingTableClient.csproj", "{D3CC31A6-1293-459D-A109-9BAB313834F7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shumozavr.RotatingTable.Client", "Shumozavr.RotatingTable.Client\Shumozavr.RotatingTable.Client.csproj", "{D3CC31A6-1293-459D-A109-9BAB313834F7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shumozavr.REW.Client", "Shumozavr.REW.Client\Shumozavr.REW.Client.csproj", "{3195400C-62F8-4BF2-851B-99641692A3C0}"
 EndProject
@@ -11,6 +11,12 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shumozavr.Common", "Shumozavr.Common\Shumozavr.Common.csproj", "{272BCE05-A579-4F39-B1F9-8A785BD467E8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shumozavr.RotatingTable.Emulator", "Shumozavr.RotatingTable.Emulator\Shumozavr.RotatingTable.Emulator.csproj", "{1F5C9952-71ED-446F-8F41-E4A3585047A3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shumozavr.RotatingTable.Common", "Shumozavr.RotatingTable.Common\Shumozavr.RotatingTable.Common.csproj", "{0FA45634-FA34-411D-91B0-16BFAACAFA0E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "RotatingTable", "RotatingTable", "{F745025D-3303-4FF3-AF07-A72E3631B3EB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shumozavr.RotatingTable.IntegrationTests", "Shumozavr.RotatingTable.IntegrationTests\Shumozavr.RotatingTable.IntegrationTests.csproj", "{C4E30DC8-57D0-4CD3-89AF-8E58F8983ED6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -42,5 +48,19 @@ Global
 		{1F5C9952-71ED-446F-8F41-E4A3585047A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1F5C9952-71ED-446F-8F41-E4A3585047A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1F5C9952-71ED-446F-8F41-E4A3585047A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0FA45634-FA34-411D-91B0-16BFAACAFA0E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0FA45634-FA34-411D-91B0-16BFAACAFA0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0FA45634-FA34-411D-91B0-16BFAACAFA0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0FA45634-FA34-411D-91B0-16BFAACAFA0E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C4E30DC8-57D0-4CD3-89AF-8E58F8983ED6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4E30DC8-57D0-4CD3-89AF-8E58F8983ED6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4E30DC8-57D0-4CD3-89AF-8E58F8983ED6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4E30DC8-57D0-4CD3-89AF-8E58F8983ED6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D3CC31A6-1293-459D-A109-9BAB313834F7} = {F745025D-3303-4FF3-AF07-A72E3631B3EB}
+		{0FA45634-FA34-411D-91B0-16BFAACAFA0E} = {F745025D-3303-4FF3-AF07-A72E3631B3EB}
+		{1F5C9952-71ED-446F-8F41-E4A3585047A3} = {F745025D-3303-4FF3-AF07-A72E3631B3EB}
+		{C4E30DC8-57D0-4CD3-89AF-8E58F8983ED6} = {F745025D-3303-4FF3-AF07-A72E3631B3EB}
 	EndGlobalSection
 EndGlobal

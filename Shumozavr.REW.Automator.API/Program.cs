@@ -7,7 +7,9 @@ using Shumozavr.REW.Automator;
 using Shumozavr.REW.Automator.API;
 using Shumozavr.REW.Client;
 using Shumozavr.REW.Client.Http;
-using Shumozavr.REW.RotatingTableClient;
+using Shumozavr.RotatingTable.Client;
+using Shumozavr.RotatingTable.Common;
+using ServiceCollectionExtensions = Shumozavr.RotatingTable.Client.ServiceCollectionExtensions;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddConsole();
@@ -27,9 +29,9 @@ builder.Services.AddHttpLogging(
     });
 
 builder.Services.AddDefaultOptions<RewClientSettings>();
-builder.Services.AddDefaultOptions<RotatingTableClientSettings>();
+builder.Services.AddDefaultOptions<RotatingTableSettings>();
 builder.Services.AddRewClient(p => p.GetRequiredService<IOptions<RewClientSettings>>());
-builder.Services.AddRotatingTableClient(p => p.GetRequiredService<IOptions<RotatingTableClientSettings>>());
+ServiceCollectionExtensions.AddRotatingTableClient(builder.Services, p => p.GetRequiredService<IOptions<RotatingTableSettings>>());
 builder.Services.AddHostedService<SubscriptionService>();
 
 var app = builder.Build();

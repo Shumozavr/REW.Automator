@@ -1,6 +1,6 @@
 ﻿using System.Threading.Channels;
 
-namespace Shumozavr.REW.RotatingTableClient;
+namespace Shumozavr.Common.Messaging;
 
 public class Subscription<TMessage>(ChannelReader<TMessage> messagesReader, Action disposeAction) : IDisposable
 {

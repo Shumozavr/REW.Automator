@@ -1,5 +1,5 @@
 ﻿using Shumozavr.REW.Client.Http;
-using Shumozavr.REW.RotatingTableClient;
+using Shumozavr.RotatingTable.Client;
 
 namespace Shumozavr.REW.Automator;
 

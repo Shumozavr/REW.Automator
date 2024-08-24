@@ -7,8 +7,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Shumozavr.REW.Client\Shumozavr.REW.Client.csproj" />
-      <ProjectReference Include="..\Shumozavr.RotatingTable.Client\Shumozavr.RotatingTable.Client.csproj" />
+      <ProjectReference Include="..\Shumozavr.Common\Shumozavr.Common.csproj" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <PackageReference Include="System.IO.Ports" Version="8.0.0" />
     </ItemGroup>
 
 </Project>

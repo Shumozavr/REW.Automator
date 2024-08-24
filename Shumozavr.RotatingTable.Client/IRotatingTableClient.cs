@@ -1,4 +1,4 @@
-﻿namespace Shumozavr.REW.RotatingTableClient;
+﻿namespace Shumozavr.RotatingTable.Client;
 
 public interface IRotatingTableClient : IDisposable
 {

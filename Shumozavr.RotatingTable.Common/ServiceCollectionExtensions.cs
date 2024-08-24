@@ -1,14 +1,17 @@
 ﻿using System.IO.Ports;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace Shumozavr.REW.RotatingTableClient;
+[assembly:InternalsVisibleTo("Shumozavr.RotatingTable.Client")]
+[assembly:InternalsVisibleTo("Shumozavr.RotatingTable.Emulator")]
+namespace Shumozavr.RotatingTable.Common;
 
-public static class ServiceCollectionExtensions
+internal static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddRotatingTableClient(this IServiceCollection services, Func<IServiceProvider, IOptions<RotatingTableClientSettings>> getSettings)
+    public static IServiceCollection AddBaseRotatingTableClient(this IServiceCollection services, Func<IServiceProvider, IOptions<RotatingTableSettings>> getSettings)
     {
-        services.AddSingleton<SerialPort>(
+        services.AddTransient<SerialPort>(
             p =>
             {
                 var settings = getSettings(p).Value;
@@ -21,7 +24,6 @@ public static class ServiceCollectionExtensions
                 port.Open();
                 return port;
             });
-        services.AddSingleton<IRotatingTableClient, RotatingTableClient>();
         return services;
     }
 }

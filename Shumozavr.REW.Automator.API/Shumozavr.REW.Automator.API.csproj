@@ -4,14 +4,9 @@
         <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
-<!--        <PublishTrimmed>true</PublishTrimmed>-->
-<!--        <TrimMode>partial</TrimMode>-->
-<!--        <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>-->
-        
     </PropertyGroup>
 
     <ItemGroup>
-<!--        <TrimmerRootAssembly Include="Swashbuckle.AspNetCore.SwaggerUI" />-->
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.6"/>
         <PackageReference Include="Microsoft.Extensions.Compliance.Redaction" Version="8.8.0" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Shumozavr.Common.Messaging;
 
 namespace Shumozavr.Common;
 
@@ -13,5 +14,16 @@ public static class ServiceCollectionExtensions
               .BindConfiguration(T.OptionsKey)
               .ValidateDataAnnotations()
               .ValidateOnStart();
+    }
+
+
+    /// <summary>
+    /// Adds in memory messaging
+    /// </summary>
+    /// <typeparam name="TService">Unique type for separating one event bus from another</typeparam>
+    public static IServiceCollection AddInMemoryEventBus<TService>(this IServiceCollection services)
+    {
+        services.AddKeyedSingleton(typeof(IEventBus<>), typeof(TService).Name, typeof(InMemoryEventBus<>));
+        return services;
     }
 }
