@@ -13,7 +13,7 @@ namespace Shumozavr.RotatingTable.Client;
 public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
 {
     private readonly IOptionsMonitor<RotatingTableClientSettings> _settings;
-    private TaskCompletionSource? _rotatingTcs;
+    private Task? _rotatingTask;
 
     public RotatingTableClient(
         ILogger<RotatingTableClient> logger,
@@ -77,10 +77,9 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
             subscription.Dispose();
             throw;
         }
-        _rotatingTcs = new TaskCompletionSource();
 
         var positions = Channel.CreateUnbounded<double>();
-        _ = Task.Run(
+        _rotatingTask = Task.Run(
             async () =>
             {
                 try
@@ -99,7 +98,6 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
                 }
                 finally
                 {
-                    _rotatingTcs.SetResult();
                     subscription.Dispose();
                 }
             },
@@ -151,7 +149,7 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
 
     public async Task Stop(bool softStop, CancellationToken cancellationToken)
     {
-        if (_rotatingTcs == null || _rotatingTcs.Task.IsCompleted)
+        if (_rotatingTask == null || _rotatingTask.IsCompleted)
         {
             Logger.LogInformation("Table was not rotating, nothing to stop");
             return;
@@ -162,9 +160,9 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
         TablePort.SendCommand(softStop ? "SOFTSTOP" : "STOP");
         await WaitForCommandInit(subscription, cancellationToken);
 
-        if (_rotatingTcs != null)
+        if (_rotatingTask != null)
         {
-            await _rotatingTcs.Task;
+            await _rotatingTask;
             Logger.LogInformation("Rotating stopped");
         }
     }
