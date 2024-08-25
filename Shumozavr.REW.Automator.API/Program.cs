@@ -53,8 +53,15 @@ app.MapPost(
     "/rew/measure/run",
     async (MeasuringOptions request, [FromServices]MeasureRecorderService recorder, CancellationToken cancellationToken) =>
     {
-        await recorder.RunMeasureScenario(request, cancellationToken);
+        await recorder.StartMeasureScenario(request, cancellationToken);
     });
+
+app.MapPost(
+    "/rew/measure/stop",
+    (
+        [FromServices] MeasureRecorderService recorder,
+        [FromQuery] bool softStop = true,
+        CancellationToken cancellationToken = default) => recorder.StopMeasureScenario(cancellationToken));
 
 app.MapPost(
         "/rew/measure/subscribe",
@@ -72,11 +79,7 @@ app.MapPost(
 
 app.MapPost(
     "/rotatingTable/stop/{stopType}",
-    async ([FromServices]IRotatingTableClient client, string stopType = "soft", CancellationToken cancellationToken = default) =>
-    {
-        await (stopType == "soft"
-            ? client.SoftStop(cancellationToken)
-            : client.Stop(cancellationToken));
-    });
+    ([FromServices] IRotatingTableClient client, bool softStop = true, CancellationToken cancellationToken = default) =>
+        client.Stop(softStop, cancellationToken));
 
 await app.RunAsync();

@@ -16,4 +16,8 @@
       <ProjectReference Include="..\Shumozavr.Common\Shumozavr.Common.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Extensions\" />
+    </ItemGroup>
+
 </Project>

@@ -14,11 +14,11 @@ public class RotatingTableEmulator : BaseRotatingTableDriver, IAsyncDisposable
     private readonly IOptionsMonitor<RotatingTableEmulatorSettings> _settings;
     private int _acceleration = 1;
     private readonly SemaphoreSlim _commandLock = new(1, 1);
-    private CancellationTokenSource? _rotatingCt;
+    public CancellationTokenSource? RotatingCt;
     private readonly Task _processTask;
     public Task? RotatingTask;
-    public Func<int, double> GetRotatingStep { get; set; } = angleToRotate => angleToRotate / 5d;
-    public Func<Task> RotatingDelay { get; set; } = () => Task.Delay(TimeSpan.FromMilliseconds(300));
+    public Func<int, double> GetRotatingStep { get; set; } = null!;
+    public Func<Task> RotatingDelay { get; set; } = null!;
     private readonly CancellationTokenSource _processCt;
 
     public RotatingTableEmulator(
@@ -70,8 +70,8 @@ public class RotatingTableEmulator : BaseRotatingTableDriver, IAsyncDisposable
                 {
                     throw new InvalidOperationException("RotatingTask must be completed to proceed");
                 }
-                _rotatingCt?.Dispose();
-                _rotatingCt = CancellationTokenSource.CreateLinkedTokenSource(_processCt.Token);
+                RotatingCt?.Dispose();
+                RotatingCt = CancellationTokenSource.CreateLinkedTokenSource(_processCt.Token);
                 RotatingTask = Task.Run(async () =>
                 {
                     try
@@ -80,7 +80,7 @@ public class RotatingTableEmulator : BaseRotatingTableDriver, IAsyncDisposable
                         while (angle < desiredAngle)
                         {
                             _logger.LogInformation("current angle {angle}", angle);
-                            if (_rotatingCt.Token.IsCancellationRequested)
+                            if (RotatingCt.Token.IsCancellationRequested)
                             {
                                 return;
                             }
@@ -102,17 +102,17 @@ public class RotatingTableEmulator : BaseRotatingTableDriver, IAsyncDisposable
                     {
                         TablePort.SendCommand("END");
                     }
-                });
+                }, RotatingCt.Token);
                 break;
             case "SOFTSTOP":
             case "STOP":
                 using (await AcquireCommandLock())
                 {
-                    if (_rotatingCt == null)
+                    if (RotatingCt == null)
                     {
                         throw new InvalidOperationException("Rotating CT must be initialized");
                     }
-                    _rotatingCt.Cancel();
+                    RotatingCt.Cancel();
                     TablePort.SendCommand("OK");
                 }
 
@@ -139,7 +139,7 @@ public class RotatingTableEmulator : BaseRotatingTableDriver, IAsyncDisposable
         {
             if (RotatingTask is { IsCompleted: false })
             {
-                _rotatingCt?.Cancel();
+                RotatingCt?.Cancel();
                 await RotatingTask;
             }
         }
@@ -161,7 +161,7 @@ public class RotatingTableEmulator : BaseRotatingTableDriver, IAsyncDisposable
 
 
         await CastAndDispose(_commandLock);
-        await CastAndDispose(_rotatingCt);
+        await CastAndDispose(RotatingCt);
         await CastAndDispose(RotatingTask);
         await CastAndDispose(_processTask);
         await CastAndDispose(_processCt);

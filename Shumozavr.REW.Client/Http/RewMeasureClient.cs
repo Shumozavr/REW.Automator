@@ -1,6 +1,5 @@
 ﻿using System.Threading.Channels;
 using Shumozavr.Common.Messaging;
-using Shumozavr.REW.Client.Extensions;
 using Shumozavr.REW.Client.Http.Models;
 using Shumozavr.REW.Client.Http.Models.Measure;
 
@@ -44,6 +43,6 @@ public class RewMeasureClient
         await _client.ExecuteCommand(command, cancellationToken);
 
         // TODO: Error handling?
-        await subscription.WaitForMessage("100% Measurement complete", cancellationToken);
+        await subscription.WaitForMessage(m => m.Message.Contains("100% Measurement complete"), cancellationToken);
     }
 }

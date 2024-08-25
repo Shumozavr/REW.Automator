@@ -16,42 +16,69 @@ public class MeasureRecorderService(
     private Task? _measureTask;
     private CancellationTokenSource? _measureCt;
 
-    public async Task StopMeasuring()
+    public async Task StopMeasureScenario(CancellationToken cancellationToken)
     {
         if (_measureTask == null || _measureTask.IsCompleted)
         {
+            logger.LogInformation("Measurement was not started/finished, nothing to stop");
             return;
         }
 
         _measureCt?.Cancel();
-        await _measureTask;
+        try
+        {
+            await _measureTask;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        logger.LogInformation("Measurement was cancelled");
     }
 
-    public async Task RunMeasureScenario(MeasuringOptions options, CancellationToken cancellationToken)
+    public async Task StartMeasureScenario(MeasuringOptions options, CancellationToken cancellationToken)
     {
-        // TODO: доделать стоп
         using var _ = await LockWrapper.LockOrThrow(MeasureLock);
         _measureCt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cancellationToken = _measureCt.Token;
-        logger.LogInformation("Starting to measure");
-        logger.LogInformation("setting acceleration {acc}", options.Acceleration);
-        await rotatingTableClient.SetAcceleration(options.Acceleration, cancellationToken);
-        logger.LogInformation("starting measurement from 0 to {angle} with step {step}", options.Angle, options.Step);
 
-        var angle = 0;
-        while (angle < options.Angle)
-        {
-            logger.LogInformation("current angle {angle}", angle);
-            await Measure(angle, options.Title, options.MeasurementLength, options.IrWindowsOptions, cancellationToken);
+        _measureTask = Task.Run(
+            async () =>
+            {
+                logger.LogInformation("Starting to measure");
+                logger.LogInformation("setting acceleration {acc}", options.Acceleration);
+                await rotatingTableClient.SetAcceleration(options.Acceleration, cancellationToken);
+                logger.LogInformation(
+                    "starting measurement from 0 to {angle} with step {step}",
+                    options.Angle,
+                    options.Step);
 
-            var step = Math.Min(options.Step, options.Angle - angle);
-            await rotatingTableClient.Rotate(step, cancellationToken);
+                var angle = 0;
+                while (angle < options.Angle)
+                {
+                    logger.LogInformation("current angle {angle}", angle);
+                    await Measure(
+                        angle,
+                        options.Title,
+                        options.MeasurementLength,
+                        options.IrWindowsOptions,
+                        cancellationToken);
 
-            angle += step;
-        }
-        logger.LogInformation("current angle {angle}", angle);
+                    var step = Math.Min(options.Step, options.Angle - angle);
+                    await rotatingTableClient.Rotate(step, cancellationToken);
 
-        await Measure(angle, options.Title, options.MeasurementLength, options.IrWindowsOptions, cancellationToken);
+                    angle += step;
+                }
+
+                logger.LogInformation("current angle {angle}", angle);
+
+                await Measure(
+                    angle,
+                    options.Title,
+                    options.MeasurementLength,
+                    options.IrWindowsOptions,
+                    cancellationToken);
+            },
+            cancellationToken);
     }
 
     private async Task Measure(double currentAngle, string title, string length, IrWindowsOptions irWindowsOptions, CancellationToken cancellationToken)

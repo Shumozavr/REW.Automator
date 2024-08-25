@@ -13,6 +13,7 @@ namespace Shumozavr.RotatingTable.Client;
 public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
 {
     private readonly IOptionsMonitor<RotatingTableClientSettings> _settings;
+    private TaskCompletionSource? _rotatingTcs;
 
     public RotatingTableClient(
         ILogger<RotatingTableClient> logger,
@@ -58,10 +59,15 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
 
     public async Task<IAsyncEnumerable<double>> StartRotating(double angle, CancellationToken cancellationToken)
     {
-        using var @lock = await AcquireCommandLock();
+        if (Math.Abs(angle) < 0.0001)
+        {
+            return AsyncEnumerable.Empty<double>();
+        }
+
         var subscription = await TablePort.Subscribe();
         try
         {
+            using var @lock = await AcquireCommandLock();
             TablePort.SendCommand($"FM {angle}");
             await WaitForCommandInit(subscription, cancellationToken);
         }
@@ -71,13 +77,15 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
             subscription.Dispose();
             throw;
         }
+        _rotatingTcs = new TaskCompletionSource();
+
         var positions = Channel.CreateUnbounded<double>();
         _ = Task.Run(
             async () =>
             {
                 try
                 {
-                    await foreach (var position in ProcessPositions(subscription.MessagesReader, cancellationToken))
+                    await foreach (var position in ProcessPositions(subscription.MessagesReader, CancellationToken.None))
                     {
                         positions.Writer.TryWrite(position);
                     }
@@ -91,12 +99,13 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
                 }
                 finally
                 {
+                    _rotatingTcs.SetResult();
                     subscription.Dispose();
                 }
             },
-            cancellationToken);
+            CancellationToken.None);
 
-        return positions.Reader.ReadAllAsync(cancellationToken);
+        return positions.Reader.ReadAllAsync(CancellationToken.None);
 
         async IAsyncEnumerable<double> ProcessPositions(ChannelReader<string> messages, [EnumeratorCancellation] CancellationToken ct)
         {
@@ -119,47 +128,70 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
         }
     }
 
-    public async Task Rotate(double angle, CancellationToken cancellationToken)
+    public async Task<double?> Rotate(double angle, CancellationToken cancellationToken)
     {
-        if (Math.Abs(angle) < 0.0001)
+        var positionsStream = await StartRotating(angle, cancellationToken);
+
+        double? lastPos = null;
+        try
         {
+            await foreach (var pos in positionsStream.WithCancellation(cancellationToken))
+            {
+                lastPos = pos;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            await Stop(softStop: true, CancellationToken.None);
+            return lastPos;
+        }
+
+        return lastPos;
+    }
+
+    public async Task Stop(bool softStop, CancellationToken cancellationToken)
+    {
+        if (_rotatingTcs == null || _rotatingTcs.Task.IsCompleted)
+        {
+            Logger.LogInformation("Table was not rotating, nothing to stop");
             return;
         }
-        await foreach (var _ in (await StartRotating(angle, cancellationToken)).WithCancellation(cancellationToken))
+
+        using var @lock = await AcquireCommandLock();
+        using var subscription = await TablePort.Subscribe();
+        TablePort.SendCommand(softStop ? "SOFTSTOP" : "STOP");
+        await WaitForCommandInit(subscription, cancellationToken);
+
+        if (_rotatingTcs != null)
         {
+            await _rotatingTcs.Task;
+            Logger.LogInformation("Rotating stopped");
         }
-    }
-
-    public async Task Stop(CancellationToken cancellationToken)
-    {
-        using var @lock = await AcquireCommandLock();
-        using var subscription = await TablePort.Subscribe();
-        TablePort.SendCommand("STOP");
-        await WaitForCommandInit(subscription, cancellationToken);
-    }
-
-    public async Task SoftStop(CancellationToken cancellationToken)
-    {
-        using var @lock = await AcquireCommandLock();
-        using var subscription = await TablePort.Subscribe();
-        TablePort.SendCommand("SOFTSTOP");
-        await WaitForCommandInit(subscription, cancellationToken);
     }
 
     private async Task WaitForCommandInit(Subscription<string> subscription, CancellationToken cancellationToken)
     {
         var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_settings.CurrentValue.CommandInitiationTimeout);
-        await foreach (var token in subscription.MessagesReader.ReadAllAsync(cts.Token))
+        var message = await subscription.WaitForMessage(m => m is "OK" or "ERR", cts.Token);
+        if (message is "OK")
         {
-            switch (token)
-            {
-                case "OK" or "ERR":
-                    Logger.LogInformation("Command started");
-                    return;
-            }
+            Logger.LogInformation("Command started");
+            return;
         }
 
-        throw new InvalidOperationException("Command was not started");
+        throw new InvalidOperationException("Failed to init command");
+    }
+
+    protected virtual async ValueTask DisposeAsyncCore()
+    {
+        await Stop(softStop: true, CancellationToken.None);
+    }
+
+    public sealed override async ValueTask DisposeAsync()
+    {
+        await DisposeAsyncCore();
+        await base.DisposeAsync();
+        GC.SuppressFinalize(this);
     }
 }

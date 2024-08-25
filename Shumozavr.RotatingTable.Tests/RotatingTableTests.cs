@@ -11,6 +11,8 @@ public class RotatingTableTests : IClassFixture<RotatingTableFixture>
     public RotatingTableTests(RotatingTableFixture fixture)
     {
         _fixture = fixture;
+        _fixture.Emulator.GetRotatingStep = angleToRotate => angleToRotate / 5d;
+        _fixture.Emulator.RotatingDelay = () => Task.Delay(TimeSpan.FromMilliseconds(300));
     }
 
     [Fact]
@@ -31,7 +33,7 @@ public class RotatingTableTests : IClassFixture<RotatingTableFixture>
     [InlineData(30, 5.5, new[] {0d, 5.5, 11, 16.5, 22.0, 27.5, 30})]
     [InlineData(1, 33, new[] {0d, 1})]
     [InlineData(100, 33, new[] {0d, 33, 66, 99, 100})]
-    public async Task RotatingTest(double expectedAngle, double step, double[] expected)
+    public async Task StartRotatingTest(double expectedAngle, double step, double[] expected)
     {
         _fixture.Emulator.GetRotatingStep = _ => step;
 
@@ -41,6 +43,28 @@ public class RotatingTableTests : IClassFixture<RotatingTableFixture>
         positions.Should().BeEquivalentTo(
             expected,
             WithPrecision(precision));
+    }
+
+    [Fact]
+    public async Task CancelRotatingTest()
+    {
+        var semaphore = new SemaphoreSlim(3);
+        _fixture.Emulator.GetRotatingStep = angleToRotate => 1;
+        _fixture.Emulator.RotatingDelay = () => semaphore.WaitAsync();
+
+        var cts = new CancellationTokenSource();
+        var clientRotatingTask = _fixture.Client.Rotate(1000, cts.Token);
+
+        Assert.False(_fixture.Emulator.RotatingCt!.IsCancellationRequested);
+        Assert.False(_fixture.Emulator.RotatingTask!.IsCanceled);
+        await Task.Delay(1000, CancellationToken.None);
+        _fixture.Emulator.RotatingCt!.Token.Register(() => semaphore.Release());
+        cts.Cancel();
+
+        var lastPos = await clientRotatingTask;
+        // 0, 1, 2, 3
+        Assert.Equal(3, lastPos);
+
     }
 
     [Theory]
@@ -56,21 +80,14 @@ public class RotatingTableTests : IClassFixture<RotatingTableFixture>
         _fixture.Emulator.RotatingDelay = () => semaphore.WaitAsync();
 
         var positions = new List<double>();
-        await foreach (var position in await _fixture.Client.StartRotating(30, CancellationToken.None))
+        var positionsStream = await _fixture.Client.StartRotating(30, CancellationToken.None);
+        _fixture.Emulator.RotatingCt!.Token.Register(() => semaphore.Release());
+        await foreach (var position in positionsStream)
         {
             positions.Add(position);
             if (positions.Count == expectedStopPosition)
             {
-                if (softStop)
-                {
-                    await _fixture.Client.SoftStop(CancellationToken.None);
-                }
-                else
-                {
-                    await _fixture.Client.Stop(CancellationToken.None);
-                }
-
-                semaphore.Release(semaphoreCount);
+                await _fixture.Client.Stop(softStop, CancellationToken.None);
             }
         }
 
