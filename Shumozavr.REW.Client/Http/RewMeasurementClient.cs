@@ -21,6 +21,11 @@ public class RewMeasurementClient
         await _client.SubscribeOnEvents(new SubscribeRequest(callbackUri.ToString()), cancellationToken);
     }
 
+    public async Task Unsubscribe(Uri callbackUri, CancellationToken cancellationToken)
+    {
+        await _client.SubscribeOnEvents(new SubscribeRequest(callbackUri.ToString()), cancellationToken);
+    }
+
     public Task Callback(DynamicRewMessage message, CancellationToken cancellationToken)
     {
         _eventBus.Publish(message);

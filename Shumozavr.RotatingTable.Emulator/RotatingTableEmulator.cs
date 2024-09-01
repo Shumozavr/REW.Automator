@@ -8,7 +8,7 @@ using Shumozavr.RotatingTable.Common;
 
 namespace Shumozavr.RotatingTable.Emulator;
 
-public class RotatingTableEmulator : BaseRotatingTableDriver, IAsyncDisposable
+public class RotatingTableEmulator : BaseRotatingTableDriver
 {
     private readonly ILogger<RotatingTableEmulator> _logger;
     private readonly IOptionsMonitor<RotatingTableEmulatorSettings> _settings;
@@ -17,8 +17,8 @@ public class RotatingTableEmulator : BaseRotatingTableDriver, IAsyncDisposable
     public CancellationTokenSource? RotatingCt;
     private readonly Task _processTask;
     public Task? RotatingTask;
-    public Func<int, double> GetRotatingStep { get; set; } = null!;
-    public Func<Task> RotatingDelay { get; set; } = null!;
+    public Func<int, double> GetRotatingStep { get; set; } = expectedAngle => expectedAngle / 5.0;
+    public Func<Task> RotatingDelay { get; set; } = () => Task.Delay(1000);
     private readonly CancellationTokenSource _processCt;
 
     public RotatingTableEmulator(

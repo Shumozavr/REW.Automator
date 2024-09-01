@@ -37,6 +37,8 @@ public class MeasureRecorderService(
 
     public async Task StartMeasureScenario(MeasuringOptions options, CancellationToken cancellationToken)
     {
+        ValidateRequest(options);
+
         using var _ = await LockWrapper.LockOrThrow(MeasureLock);
         _measureCt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cancellationToken = _measureCt.Token;
@@ -77,8 +79,27 @@ public class MeasureRecorderService(
                     options.MeasurementLength,
                     options.IrWindowsOptions,
                     cancellationToken);
+                logger.LogInformation("Measurements finished");
             },
             cancellationToken);
+    }
+
+    private static void ValidateRequest(MeasuringOptions options)
+    {
+        if (options.Angle == 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(options.Angle), "Angle must not be zero");
+        }
+
+        if (options.Acceleration is <= 0 or > 10)
+        {
+            throw new ArgumentOutOfRangeException(nameof(options.Acceleration), "Acceleration must be between 0 and 10");
+        }
+
+        if (options.Step <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(options.Step), "Step must be greater than 0");
+        }
     }
 
     private async Task Measure(double currentAngle, string title, string length, IrWindowsOptions irWindowsOptions, CancellationToken cancellationToken)

@@ -1,6 +1,6 @@
 ﻿namespace Shumozavr.RotatingTable.Client;
 
-public interface IRotatingTableClient : IAsyncDisposable
+public interface IRotatingTableClient
 {
     /// <summary>
     /// Начинает вращение стола

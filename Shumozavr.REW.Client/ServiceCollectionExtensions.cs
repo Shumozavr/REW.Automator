@@ -26,8 +26,15 @@ public static class ServiceCollectionExtensions
                 var settings = p.GetRequiredService<IOptions<RewClientSettings>>().Value;
                 o.BaseAddress = new Uri(settings.BaseAddress);
             });
+        services.AddRefitClient<IRewApplicationHttpClient>().ConfigureHttpClient(
+            (p, o) =>
+            {
+                var settings = p.GetRequiredService<IOptions<RewClientSettings>>().Value;
+                o.BaseAddress = new Uri(settings.BaseAddress);
+            });
 
         services.AddSingleton<RewMeasureClient>();
         services.AddSingleton<RewMeasurementClient>();
+        services.AddSingleton<RewApplicationClient>();
     }
 }

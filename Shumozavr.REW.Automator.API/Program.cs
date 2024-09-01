@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Compliance.Classification;
@@ -38,7 +37,7 @@ builder.Services.AddHttpLogging(
 builder.Services.AddRewClient(c => c.GetSection(RewClientSettings.OptionsKey));
 builder.Services.AddRotatingTable(builder.Configuration);
 builder.Services.AddAutomator();
-builder.Services.AddHostedService<SubscriptionService>();
+builder.Services.AddHostedService<InitService>();
 
 var app = builder.Build();
 
@@ -71,15 +70,24 @@ app.MapPost(
         });
 
 app.MapPost(
+    "/rew/application/errors/subscribe",
+    ([FromBody]dynamic message, [FromServices]RewApplicationClient client) =>
+    {
+        client.ErrorCallback(new DynamicRewMessage(message, RewMessageSource.ApplicationWarnings), CancellationToken.None);
+    });
+
+app.MapPost(
+    "/rew/application/warnings/subscribe",
+    ([FromBody]dynamic message, [FromServices]RewApplicationClient client) =>
+    {
+        client.WarningCallback(new DynamicRewMessage(message, RewMessageSource.ApplicationWarnings), CancellationToken.None);
+    });
+
+app.MapPost(
         "/rew/measurements/subscribe",
         async ([FromBody]dynamic message, [FromServices]RewMeasurementClient client) =>
         {
             await client.Callback(new DynamicRewMessage(message, RewMessageSource.Measurement), CancellationToken.None);
         });
-
-app.MapPost(
-    "/rotatingTable/stop/{stopType}",
-    ([FromServices] IRotatingTableClient client, bool softStop = true, CancellationToken cancellationToken = default) =>
-        client.Stop(softStop, cancellationToken));
 
 await app.RunAsync();

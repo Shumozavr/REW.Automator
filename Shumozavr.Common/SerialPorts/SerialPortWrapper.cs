@@ -1,4 +1,5 @@
-﻿using System.IO.Ports;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.IO.Ports;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Shumozavr.Common.Messaging;
@@ -7,10 +8,12 @@ namespace Shumozavr.Common.SerialPorts;
 
 public sealed class SerialPortWrapper : ISerialPort
 {
+    private readonly string _serviceKey;
     private readonly ILogger _logger;
+    private readonly IOptionsMonitor<SerialPortSettings> _settings;
     private readonly IEventBus<string> _tableMessagesBus;
 
-    private readonly SerialPort _tablePort;
+    private SerialPort? _tablePort;
     private readonly SemaphoreSlim _commandLock = new(1, 1);
 
     public SerialPortWrapper(
@@ -19,22 +22,23 @@ public sealed class SerialPortWrapper : ISerialPort
         IOptionsMonitor<SerialPortSettings> settings,
         EventBusFactory eventBusFactory)
     {
-        _tablePort = CreateSerialPort(settings.Get(serviceKey));
+        _serviceKey = serviceKey;
         _logger = logger;
+        _settings = settings;
         _tableMessagesBus = eventBusFactory.Create<string>();
 
-        _tablePort.DataReceived += OnDataReceived;
-        _tablePort.ErrorReceived += OnErrorReceived;
     }
 
     public void SendCommand(string command)
     {
+        EnsureInitialized();
         _logger.LogInformation("Sending command: {command}", command);
         _tablePort.WriteLine(command);
     }
 
     public Task<Subscription<string>> Subscribe()
     {
+        EnsureInitialized();
         return _tableMessagesBus.Subscribe();
     }
 
@@ -51,8 +55,12 @@ public sealed class SerialPortWrapper : ISerialPort
 
         return;
 
-        static async ValueTask CastAndDispose(IDisposable resource)
+        static async ValueTask CastAndDispose(IDisposable? resource)
         {
+            if (resource == default)
+            {
+                return;
+            }
             if (resource is IAsyncDisposable resourceAsyncDisposable)
                 await resourceAsyncDisposable.DisposeAsync();
             else
@@ -69,6 +77,7 @@ public sealed class SerialPortWrapper : ISerialPort
 
     private void OnDataReceived(object sender, SerialDataReceivedEventArgs args)
     {
+        EnsureInitializedOrThrow();
         _logger.LogTrace("Data received: {EventType}", args.EventType);
         try
         {
@@ -97,7 +106,28 @@ public sealed class SerialPortWrapper : ISerialPort
         }
     }
 
-    private static SerialPort CreateSerialPort(SerialPortSettings settings)
+    [MemberNotNull(nameof(_tablePort))]
+    private Task EnsureInitialized(CancellationToken cancellationToken = default)
+    {
+        if (_tablePort != null)
+        {
+            return Task.CompletedTask;
+        }
+        _tablePort = CreateSerialPort(_settings.Get(_serviceKey));
+        return Task.CompletedTask;
+    }
+
+    [MemberNotNull(nameof(_tablePort))]
+    private Task EnsureInitializedOrThrow(CancellationToken cancellationToken = default)
+    {
+        if (_tablePort != null)
+        {
+            return Task.CompletedTask;
+        }
+        throw new InvalidOperationException("Serial port is not initialized");
+    }
+
+    private SerialPort CreateSerialPort(SerialPortSettings settings)
     {
         var port = new SerialPort(settings.PortName)
         {
@@ -105,6 +135,8 @@ public sealed class SerialPortWrapper : ISerialPort
             ReadTimeout = (int)settings.ReadPortTimeout.TotalMilliseconds,
             WriteTimeout = (int)settings.WritePortTimeout.TotalMilliseconds,
         };
+        port.DataReceived += OnDataReceived;
+        port.ErrorReceived += OnErrorReceived;
         port.Open();
         return port;
     }

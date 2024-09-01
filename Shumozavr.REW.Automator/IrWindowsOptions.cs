@@ -1,3 +1,9 @@
-﻿namespace Shumozavr.REW.Automator;
+﻿using System.ComponentModel;
 
-public record IrWindowsOptions(string RightWindowType, string RightWindowWidthms);
+namespace Shumozavr.REW.Automator;
+
+public record IrWindowsOptions(
+    [property:DefaultValue("Hann")]
+    string RightWindowType,
+    [property:DefaultValue("500")]
+    string RightWindowWidthms);

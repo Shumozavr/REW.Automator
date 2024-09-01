@@ -21,9 +21,9 @@ public class RewMeasureClient
         await _client.SubscribeOnEvents(new SubscribeRequest(callbackUri.ToString()), cancellationToken);
     }
 
-    public async Task SweepConfigure(SweepConfigurationRequest request, CancellationToken cancellationToken)
+    public async Task Unsubscribe(Uri callbackUri, CancellationToken cancellationToken)
     {
-        await _client.SweepConfigure(request, cancellationToken);
+        await _client.SubscribeOnEvents(new SubscribeRequest(callbackUri.ToString()), cancellationToken);
     }
 
     public Task Callback(RewMessage message, CancellationToken cancellationToken)

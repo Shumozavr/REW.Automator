@@ -9,6 +9,9 @@ public interface IRewMeasureHttpClient
     [Post("/measure/subscribe")]
     public Task<string> SubscribeOnEvents(SubscribeRequest request, CancellationToken cancellationToken);
 
+    [Post("/measure/unsubscribe")]
+    public Task<string> Unsubscribe(SubscribeRequest request, CancellationToken cancellationToken);
+
     [Post("/measure/naming")]
     public Task SetMeasureName(SetMeasureRequest request, CancellationToken cancellationToken);
 
