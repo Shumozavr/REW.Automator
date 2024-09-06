@@ -34,10 +34,11 @@ jobs:
       run: |
           # Define some variables for things we need
           tag=$(git describe --tags --abbrev=0)
-          release_name="App-$tag-${{ matrix.target }}"
+          appName="Shumozavr.REW.Automator.API"
+          release_name="$appName-$tag-${{ matrix.target }}"
 
           # Build everything
-          dotnet publish Shumozavr.REW.Automator.API -o "$release_name"
+          dotnet publish $appName -o "$release_name"
 
           # Pack files
           if [ "${{ matrix.target }}" == "win-x64" ]; then
@@ -48,9 +49,7 @@ jobs:
 
           # Delete output directory
           rm -r "$release_name"
-    - name: Publish
-      uses: softprops/action-gh-release@v1
+    - name: Create Release
+      uses: ncipollo/release-action@v1.14.0
       with:
-        files: "App*"
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        files: "$appName*"
