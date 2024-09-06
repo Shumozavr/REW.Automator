@@ -52,5 +52,5 @@ jobs:
     - name: Create Release
       uses: ncipollo/release-action@v1.14.0
       with:
-        files: "$appName*"
+        artifacts: "$appName*"
         allowUpdates: true
