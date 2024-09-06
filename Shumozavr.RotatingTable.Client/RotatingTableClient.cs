@@ -14,6 +14,7 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
 {
     private readonly IOptionsMonitor<RotatingTableClientSettings> _settings;
     private Task? _rotatingTask;
+    private double _currentAngle = 0;
 
     public RotatingTableClient(
         ILogger<RotatingTableClient> logger,
@@ -42,6 +43,12 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
         }
 
         throw new InvalidOperationException("No acceleration value was received");
+    }
+
+    public async Task Reset(CancellationToken cancellationToken)
+    {
+        await Rotate(-_currentAngle, cancellationToken);
+        _currentAngle = 0;
     }
 
     public async Task SetAcceleration(int acceleration, CancellationToken cancellationToken)
@@ -107,16 +114,18 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
 
         async IAsyncEnumerable<double> ProcessPositions(ChannelReader<string> messages, [EnumeratorCancellation] CancellationToken ct)
         {
+            var currentAngle = 0.0;
             await foreach (var token in messages.ReadAllAsync(ct))
             {
                 switch (token)
                 {
                     case var _ when token.StartsWith("POS"):
-                        var currentAngle = double.Parse(token["POS".Length..].Trim(), CultureInfo.InvariantCulture);
+                        currentAngle = double.Parse(token["POS".Length..].Trim(), CultureInfo.InvariantCulture);
                         Logger.LogInformation("Table at position {X}", currentAngle);
                         yield return currentAngle;
                         break;
                     case "END":
+                        _currentAngle += currentAngle;
                         Logger.LogInformation("Table finished rotating");
                         yield break;
                 }

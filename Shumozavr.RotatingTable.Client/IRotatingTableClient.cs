@@ -20,4 +20,6 @@ public interface IRotatingTableClient
     public Task Stop(bool softStop, CancellationToken cancellationToken);
     public Task SetAcceleration(int acceleration, CancellationToken cancellationToken);
     public Task<int> GetAcceleration(CancellationToken cancellationToken);
+
+    public Task Reset(CancellationToken cancellationToken);
 }

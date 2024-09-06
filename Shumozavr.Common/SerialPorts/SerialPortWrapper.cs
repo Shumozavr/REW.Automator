@@ -26,7 +26,6 @@ public sealed class SerialPortWrapper : ISerialPort
         _logger = logger;
         _settings = settings;
         _tableMessagesBus = eventBusFactory.Create<string>();
-
     }
 
     public void SendCommand(string command)

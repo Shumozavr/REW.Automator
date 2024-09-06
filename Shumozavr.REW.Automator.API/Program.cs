@@ -53,41 +53,86 @@ app.MapPost(
     async (MeasuringOptions request, [FromServices]MeasureRecorderService recorder, CancellationToken cancellationToken) =>
     {
         await recorder.StartMeasureScenario(request, cancellationToken);
-    });
+    })
+    .WithTags("REW");
 
 app.MapPost(
     "/rew/measure/stop",
     (
         [FromServices] MeasureRecorderService recorder,
         [FromQuery] bool softStop = true,
-        CancellationToken cancellationToken = default) => recorder.StopMeasureScenario(cancellationToken));
+        CancellationToken cancellationToken = default) => recorder.StopMeasureScenario(cancellationToken))
+    .WithTags("REW");
 
 app.MapPost(
         "/rew/measure/subscribe",
         async ([FromBody]string message, [FromServices]RewMeasureClient client) =>
         {
             await client.Callback(new RewMessage(message, RewMessageSource.Measure), CancellationToken.None);
-        });
+        })
+    .WithTags("Сюда не смотри");
 
 app.MapPost(
     "/rew/application/errors/subscribe",
     ([FromBody]dynamic message, [FromServices]RewApplicationClient client) =>
     {
         client.ErrorCallback(new DynamicRewMessage(message, RewMessageSource.ApplicationWarnings), CancellationToken.None);
-    });
+    })
+    .WithTags("Сюда не смотри");
 
 app.MapPost(
     "/rew/application/warnings/subscribe",
     ([FromBody]dynamic message, [FromServices]RewApplicationClient client) =>
     {
         client.WarningCallback(new DynamicRewMessage(message, RewMessageSource.ApplicationWarnings), CancellationToken.None);
-    });
+    })
+    .WithTags("Сюда не смотри");
 
 app.MapPost(
         "/rew/measurements/subscribe",
         async ([FromBody]dynamic message, [FromServices]RewMeasurementClient client) =>
         {
             await client.Callback(new DynamicRewMessage(message, RewMessageSource.Measurement), CancellationToken.None);
-        });
+        })
+    .WithTags("Сюда не смотри");
+
+
+app.MapPost(
+    "/rotatingTable/move/{angle:double}",
+    async (double angle, [FromServices]IRotatingTableClient client) =>
+    {
+        await client.Rotate(angle, CancellationToken.None);
+    })
+    .WithTags("Rotating Table");
+
+app.MapPost(
+    "/rotatingTable/reset",
+    async ([FromServices]IRotatingTableClient client) =>
+    {
+        await client.Reset(CancellationToken.None);
+    })
+    .WithTags("Rotating Table");
+
+app.MapPost(
+    "/rotatingTable/stop",
+    async ([FromServices]IRotatingTableClient client) =>
+    {
+        await client.Stop(softStop: true, CancellationToken.None);
+    })
+    .WithTags("Rotating Table");
+
+app.MapPost(
+        "/rotatingTable/setAcceleration/{acceleration:int}",
+        async (int acceleration, [FromServices]IRotatingTableClient client) =>
+        {
+            await client.SetAcceleration(acceleration, CancellationToken.None);
+        })
+    .WithTags("Rotating Table");
+
+app.MapPost(
+        "/rotatingTable/getAcceleration",
+        async ([FromServices]IRotatingTableClient client) => 
+        await client.GetAcceleration(CancellationToken.None))
+    .WithTags("Rotating Table");
 
 await app.RunAsync();
