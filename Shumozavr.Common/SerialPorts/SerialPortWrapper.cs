@@ -28,17 +28,22 @@ public sealed class SerialPortWrapper : ISerialPort
         _tableMessagesBus = eventBusFactory.Create<string>();
     }
 
-    public void SendCommand(string command)
+    public async Task ReInit()
     {
-        EnsureInitialized();
+        await Init();
+    }
+
+    public async Task SendCommand(string command)
+    {
+        await EnsureInitialized();
         _logger.LogInformation("Sending command: {command}", command);
         _tablePort.WriteLine(command);
     }
 
-    public Task<Subscription<string>> Subscribe()
+    public async Task<Subscription<string>> Subscribe()
     {
-        EnsureInitialized();
-        return _tableMessagesBus.Subscribe();
+        await EnsureInitialized();
+        return await _tableMessagesBus.Subscribe();
     }
 
     private bool _disposed = false;
@@ -49,22 +54,35 @@ public sealed class SerialPortWrapper : ISerialPort
             return;
         }
         _disposed = true;
-        await CastAndDispose(_tablePort);
+        _logger.LogInformation("Disposing...");
+        await DisposePort();
+
         await CastAndDispose(_commandLock);
-
+        _logger.LogInformation("Disposed...");
         return;
+    }
 
-        static async ValueTask CastAndDispose(IDisposable? resource)
+    private async Task DisposePort()
+    {
+        if (_tablePort == null)
         {
-            if (resource == default)
-            {
-                return;
-            }
-            if (resource is IAsyncDisposable resourceAsyncDisposable)
-                await resourceAsyncDisposable.DisposeAsync();
-            else
-                resource.Dispose();
+            return;
         }
+        _tablePort.DataReceived -= OnDataReceived;
+        _tablePort.ErrorReceived -= OnErrorReceived;
+        await CastAndDispose(_tablePort);
+    }
+
+    private static async ValueTask CastAndDispose(IDisposable? resource)
+    {
+        if (resource == default)
+        {
+            return;
+        }
+        if (resource is IAsyncDisposable resourceAsyncDisposable)
+            await resourceAsyncDisposable.DisposeAsync();
+        else
+            resource.Dispose();
     }
 
     private void OnErrorReceived(object sender, SerialErrorReceivedEventArgs args)
@@ -106,20 +124,28 @@ public sealed class SerialPortWrapper : ISerialPort
     }
 
     [MemberNotNull(nameof(_tablePort))]
-    private Task EnsureInitialized(CancellationToken cancellationToken = default)
+    private async Task EnsureInitialized(CancellationToken cancellationToken = default)
     {
-        if (_tablePort != null)
+        if (_tablePort?.IsOpen != true)
         {
-            return Task.CompletedTask;
+            await Init();
         }
+    }
+
+    [MemberNotNull(nameof(_tablePort))]
+    private async Task Init()
+    {
+        _logger.LogInformation("Opening serial port...");
+        await DisposePort();
         _tablePort = CreateSerialPort(_settings.Get(_serviceKey));
-        return Task.CompletedTask;
+        _tablePort.Open();
+        _logger.LogInformation("Serial port opened");
     }
 
     [MemberNotNull(nameof(_tablePort))]
     private Task EnsureInitializedOrThrow(CancellationToken cancellationToken = default)
     {
-        if (_tablePort != null)
+        if (_tablePort?.IsOpen == true)
         {
             return Task.CompletedTask;
         }
@@ -131,12 +157,12 @@ public sealed class SerialPortWrapper : ISerialPort
         var port = new SerialPort(settings.PortName)
         {
             BaudRate = 115200,
-            ReadTimeout = (int)settings.ReadPortTimeout.TotalMilliseconds,
+            ReadTimeout = SerialPort.InfiniteTimeout,
             WriteTimeout = (int)settings.WritePortTimeout.TotalMilliseconds,
+
         };
         port.DataReceived += OnDataReceived;
         port.ErrorReceived += OnErrorReceived;
-        port.Open();
         return port;
     }
 }

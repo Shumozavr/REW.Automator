@@ -30,7 +30,7 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
         using var @lock = await AcquireCommandLock();
         using var subscription = await TablePort.Subscribe();
 
-        TablePort.SendCommand("GET ACC");
+        await TablePort.SendCommand("GET ACC");
 
         var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_settings.CurrentValue.CommandInitiationTimeout);
@@ -60,7 +60,7 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
 
         using var @lock = await AcquireCommandLock();
         using var subscription = await TablePort.Subscribe();
-        TablePort.SendCommand($"SET ACC {acceleration}");
+        await TablePort.SendCommand($"SET ACC {acceleration}");
         await WaitForCommandInit(subscription, cancellationToken);
     }
 
@@ -75,7 +75,7 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
         try
         {
             using var @lock = await AcquireCommandLock();
-            TablePort.SendCommand($"FM {angle}");
+            await TablePort.SendCommand($"FM {angle}");
             await WaitForCommandInit(subscription, cancellationToken);
         }
         catch (Exception e)
@@ -166,7 +166,7 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
 
         using var @lock = await AcquireCommandLock();
         using var subscription = await TablePort.Subscribe();
-        TablePort.SendCommand(softStop ? "SOFTSTOP" : "STOP");
+        await TablePort.SendCommand(softStop ? "SOFTSTOP" : "STOP");
         await WaitForCommandInit(subscription, cancellationToken);
 
         if (_rotatingTask != null)
@@ -197,8 +197,10 @@ public class RotatingTableClient : BaseRotatingTableDriver, IRotatingTableClient
 
     public sealed override async ValueTask DisposeAsync()
     {
+        Logger.LogInformation("Disposing...");
         await DisposeAsyncCore();
         await base.DisposeAsync();
         GC.SuppressFinalize(this);
+        Logger.LogInformation("Disposed...");
     }
 }

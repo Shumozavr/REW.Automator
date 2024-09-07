@@ -38,6 +38,7 @@ public class MeasureRecorderService(
     public async Task StartMeasureScenario(MeasuringOptions options, CancellationToken cancellationToken)
     {
         ValidateRequest(options);
+        await rotatingTableClient.ReInit();
 
         using var _ = await LockWrapper.LockOrThrow(MeasureLock);
         _measureCt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

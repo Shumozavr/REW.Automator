@@ -21,6 +21,11 @@ public abstract class BaseRotatingTableDriver : IAsyncDisposable
         Logger = logger;
     }
 
+    public Task ReInit()
+    {
+        return TablePort.ReInit();
+    }
+
     protected virtual async Task<LockWrapper> AcquireCommandLock()
     {
         try

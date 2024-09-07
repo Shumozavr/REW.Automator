@@ -48,7 +48,7 @@ public class RotatingTableEmulator : BaseRotatingTableDriver
             case "GET ACC":
                 using (await AcquireCommandLock())
                 {
-                    TablePort.SendCommand(_acceleration.ToString());
+                    await TablePort.SendCommand(_acceleration.ToString());
                 }
 
                 break;
@@ -56,14 +56,14 @@ public class RotatingTableEmulator : BaseRotatingTableDriver
                 using (await AcquireCommandLock())
                 {
                     _acceleration = acceleration;
-                    TablePort.SendCommand("OK");
+                    await TablePort.SendCommand("OK");
                 }
 
                 break;
             case not null when token.StartsWith("FM") && int.TryParse(token["FM".Length..], CultureInfo.InvariantCulture, out var desiredAngle):
                 using (await AcquireCommandLock())
                 {
-                    TablePort.SendCommand("OK");
+                    await TablePort.SendCommand("OK");
                 }
 
                 if (RotatingTask is { IsCompleted: false })
@@ -86,12 +86,12 @@ public class RotatingTableEmulator : BaseRotatingTableDriver
                             }
 
                             var step = Math.Min(GetRotatingStep(desiredAngle), desiredAngle - angle);
-                            TablePort.SendCommand($"POS {angle}");
+                            await TablePort.SendCommand($"POS {angle}");
                             await RotatingDelay();
 
                             angle += step;
                         }
-                        TablePort.SendCommand($"POS {angle}");
+                        await TablePort.SendCommand($"POS {angle}");
                         _logger.LogInformation("current angle {angle}", angle);
                     }
                     catch (Exception e)
@@ -100,7 +100,7 @@ public class RotatingTableEmulator : BaseRotatingTableDriver
                     }
                     finally
                     {
-                        TablePort.SendCommand("END");
+                        await TablePort.SendCommand("END");
                     }
                 }, RotatingCt.Token);
                 break;
@@ -113,22 +113,22 @@ public class RotatingTableEmulator : BaseRotatingTableDriver
                         throw new InvalidOperationException("Rotating CT must be initialized");
                     }
                     RotatingCt.Cancel();
-                    TablePort.SendCommand("OK");
+                    await TablePort.SendCommand("OK");
                 }
 
                 break;
         }
     }
 
-    protected override Task<LockWrapper> AcquireCommandLock()
+    protected override async Task<LockWrapper> AcquireCommandLock()
     {
         try
         {
-            return base.AcquireCommandLock();
+            return await base.AcquireCommandLock();
         }
         catch
         {
-            TablePort.SendCommand("ERR");
+            await TablePort.SendCommand("ERR");
             throw;
         }
     }

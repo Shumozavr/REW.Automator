@@ -2,6 +2,7 @@
 
 public interface IRotatingTableClient
 {
+    public Task ReInit();
     /// <summary>
     /// Начинает вращение стола
     /// </summary>

@@ -28,10 +28,16 @@ public sealed class SerialPortEndMock : ISerialPort
             });
     }
 
-    public void SendCommand(string command)
+    public Task ReInit()
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task SendCommand(string command)
     {
         _logger.LogInformation("Sending command: {command}", command);
         _clientEndBus.Publish(command);
+        return Task.CompletedTask;
     }
 
     public Task<Subscription<string>> Subscribe()

@@ -14,7 +14,9 @@ using Shumozavr.REW.Client.Http;
 using Shumozavr.RotatingTable.Client;
 using Shumozavr.RotatingTable.Emulator;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder();
+builder.Configuration.Sources.Clear();
+builder.Configuration.AddJsonFile("appsettings.json", true, true);
 // builder.Logging.AddJsonConsole(o =>
 // {
 //     o.JsonWriterOptions = o.JsonWriterOptions with { Indented = true };
@@ -142,6 +144,7 @@ app.MapPost(
 try
 {
     using var mutex = EnsureOnlyOneInstance();
+    app.Logger.LogInformation(((IConfigurationRoot)app.Configuration).GetDebugView());
     CheckComPort(app);
 
     await app.RunAsync();
@@ -169,16 +172,17 @@ void CheckComPort(WebApplication webApplication)
     {
         return;
     }
+    var tableSettings = webApplication.Services.GetRequiredService<IOptions<RotatingTableClientSettings>>();
 
     var portNames = SerialPort.GetPortNames();
     webApplication.Logger.LogInformation("Найденные COM порты:\n{ComPorts}", string.Join(Environment.NewLine, portNames));
-    var usbDeviceInfos = GetUsbToComDevices();
+    var usbDeviceInfos = GetUsbToComDevices(tableSettings.Value);
     webApplication.Logger.LogInformation("Найденные USB-COM устройства:\n{USBDevices}", string.Join(Environment.NewLine, usbDeviceInfos));
-    var tableSettings = webApplication.Services.GetRequiredService<IOptions<RotatingTableClientSettings>>();
+
 
     var tablePort = tableSettings.Value.SerialPort.PortName;
     var isValidComPort = portNames.Contains(tablePort);
-    var isValidUsbToComDevice = usbDeviceInfos.Select(x => x.Description).Contains(tablePort);
+    var isValidUsbToComDevice = usbDeviceInfos.Select(x => x.Name).Any(x => x.Contains(tablePort));
     if (isValidComPort && isValidUsbToComDevice)
     {
         webApplication.Logger.LogInformation("{COMPort} распознан как поворотный стол", tablePort);
@@ -192,7 +196,7 @@ void CheckComPort(WebApplication webApplication)
 
     return;
 
-    static List<USBDeviceInfo> GetUsbToComDevices()
+    static List<USBDeviceInfo> GetUsbToComDevices(RotatingTableClientSettings settings)
     {
         if (Environment.OSVersion.Platform != PlatformID.Win32NT)
         {
@@ -200,16 +204,14 @@ void CheckComPort(WebApplication webApplication)
         }
         var devices = new List<USBDeviceInfo>();
 
-        using var searcher = new ManagementObjectSearcher(@"Select * From Win32_USBHub");
+        using var searcher = new ManagementObjectSearcher(
+            $@"Select * From Win32_PnPEntity WHERE Name LIKE '%{settings.SerialPort.ComPortDevice}%'");
         using var collection = searcher.Get();
 
         foreach (var device in collection)
         {
-            var description = (string)device.GetPropertyValue("Description");
-            if (!description.Contains("COM"))
-            {
-                continue;
-            }
+            var description = (string)device.GetPropertyValue("Name");
+
             devices.Add(new USBDeviceInfo(description));
         }
         return devices;
@@ -227,4 +229,4 @@ static Mutex EnsureOnlyOneInstance()
     return mutex;
 }
 
-record USBDeviceInfo(string Description);
+record USBDeviceInfo(string Name);
