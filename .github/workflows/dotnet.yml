@@ -30,7 +30,13 @@ jobs:
       shell: bash
       run: |
         # Get the last tag on the current branch
-        LAST_TAG=$(git describe --tags --abbrev=0)
+        git fetch --tags 
+        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+
+        # If no tag exists, start from an initial version
+        if [ -z "$LAST_TAG" ]; then
+        LAST_TAG="1.0.0"
+        fi
 
         # Extract the major, minor, and patch parts (assuming format X.Y.Z)
         IFS='.' read -r -a VERSION_PARTS <<< "$LAST_TAG"
