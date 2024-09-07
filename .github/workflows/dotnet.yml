@@ -23,6 +23,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
+        fetch-depth: '30'
         fetch-tags: 'true'
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -34,7 +35,7 @@ jobs:
         # Get the last tag on the current branch
         
         git status
-        LAST_TAG=$(git describe --tags --abbrev=0 --always)
+        LAST_TAG=$(git describe --tags --abbrev=0 )
 
         # If no tag exists, start from an initial version
         if [ -z "$LAST_TAG" ]; then
