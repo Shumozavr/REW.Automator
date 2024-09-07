@@ -17,7 +17,7 @@ jobs:
         include:
           - kind: windows
             target: win-x64
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.kind }}
 
     steps:
     - uses: actions/checkout@v4
