@@ -1,8 +1,11 @@
+using System.IO.Ports;
+using System.Management;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Compliance.Classification;
 using Microsoft.Extensions.Compliance.Redaction;
 using Microsoft.Extensions.Http.Diagnostics;
+using Microsoft.Extensions.Options;
 using NLog.Web;
 using Shumozavr.REW.Automator;
 using Shumozavr.REW.Automator.API;
@@ -135,4 +138,93 @@ app.MapPost(
         await client.GetAcceleration(CancellationToken.None))
     .WithTags("Rotating Table");
 
-await app.RunAsync();
+
+try
+{
+    using var mutex = EnsureOnlyOneInstance();
+    CheckComPort(app);
+
+    await app.RunAsync();
+}
+catch (ApplicationException ex)
+{
+    app.Logger.LogError(ex.Message);
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, ex.Message);
+}
+finally
+{
+    Console.WriteLine("Нажми любую клавишу чтобы выйти...");
+    Console.ReadKey();
+}
+
+return;
+
+void CheckComPort(WebApplication webApplication)
+{
+    var emulatorSettings = webApplication.Services.GetRequiredService<IOptions<RotatingTableEmulatorSettings>>();
+    if (emulatorSettings.Value.Enabled)
+    {
+        return;
+    }
+
+    var portNames = SerialPort.GetPortNames();
+    webApplication.Logger.LogInformation("Найденные COM порты:\n{ComPorts}", string.Join(Environment.NewLine, portNames));
+    var usbDeviceInfos = GetUsbToComDevices();
+    webApplication.Logger.LogInformation("Найденные USB-COM устройства:\n{USBDevices}", string.Join(Environment.NewLine, usbDeviceInfos));
+    var tableSettings = webApplication.Services.GetRequiredService<IOptions<RotatingTableClientSettings>>();
+
+    var tablePort = tableSettings.Value.SerialPort.PortName;
+    var isValidComPort = portNames.Contains(tablePort);
+    var isValidUsbToComDevice = usbDeviceInfos.Select(x => x.Description).Contains(tablePort);
+    if (isValidComPort && isValidUsbToComDevice)
+    {
+        webApplication.Logger.LogInformation("{COMPort} распознан как поворотный стол", tablePort);
+    }
+    else
+    {
+        throw new
+            ApplicationException(
+                $"{tablePort} не распознан как поворотный стол. IsValidComPort: {isValidComPort}, IsValidUsbToComDevice: {isValidUsbToComDevice}");
+    }
+
+    return;
+
+    static List<USBDeviceInfo> GetUsbToComDevices()
+    {
+        if (Environment.OSVersion.Platform != PlatformID.Win32NT)
+        {
+            throw new PlatformNotSupportedException("Must be ran on Windows");
+        }
+        var devices = new List<USBDeviceInfo>();
+
+        using var searcher = new ManagementObjectSearcher(@"Select * From Win32_USBHub");
+        using var collection = searcher.Get();
+
+        foreach (var device in collection)
+        {
+            var description = (string)device.GetPropertyValue("Description");
+            if (!description.Contains("COM"))
+            {
+                continue;
+            }
+            devices.Add(new USBDeviceInfo(description));
+        }
+        return devices;
+    }
+}
+
+static Mutex EnsureOnlyOneInstance()
+{
+    var mutex = new Mutex(true, "Shumozavr.REW.Automator", out var isMutexCreated);
+    if (!isMutexCreated)
+    {
+        throw new ApplicationException("Может быть запущен только один инстанс программы");
+    }
+
+    return mutex;
+}
+
+record USBDeviceInfo(string Description);
