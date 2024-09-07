@@ -137,6 +137,7 @@ public sealed class SerialPortWrapper : ISerialPort
     {
         _logger.LogInformation("Opening serial port...");
         await DisposePort();
+        await Task.Delay(TimeSpan.FromSeconds(3));
         _tablePort = CreateSerialPort(_settings.Get(_serviceKey));
         _tablePort.Open();
         _logger.LogInformation("Serial port opened");
