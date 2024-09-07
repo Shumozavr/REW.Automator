@@ -70,7 +70,9 @@ public sealed class SerialPortWrapper : ISerialPort
         }
         _tablePort.DataReceived -= OnDataReceived;
         _tablePort.ErrorReceived -= OnErrorReceived;
+        _tablePort.Close();
         await CastAndDispose(_tablePort);
+        _logger.LogInformation("Port Disposed...");
     }
 
     private static async ValueTask CastAndDispose(IDisposable? resource)
@@ -137,9 +139,21 @@ public sealed class SerialPortWrapper : ISerialPort
     {
         _logger.LogInformation("Opening serial port...");
         await DisposePort();
-        await Task.Delay(TimeSpan.FromSeconds(3));
         _tablePort = CreateSerialPort(_settings.Get(_serviceKey));
-        _tablePort.Open();
+        for (var i = 0; i < _settings.CurrentValue.ReconnectRetryCount; i++)
+        {
+            await Task.Delay(_settings.CurrentValue.ReconnectDelay);
+            try
+            {
+                _tablePort.Open();
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Failed open a serial port. Retry attempt: {i}", i);
+            }
+        }
+
         _logger.LogInformation("Serial port opened");
     }
 
