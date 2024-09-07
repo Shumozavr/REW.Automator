@@ -37,6 +37,11 @@ public class MeasureRecorderService(
 
     public async Task StartMeasureScenario(MeasuringOptions options, CancellationToken cancellationToken)
     {
+        if (options.StartDelay != TimeSpan.Zero)
+        {
+            logger.LogInformation("БЕГИ ПОКА МОЖЕШЬ, НАЧНЕМ ЧЕРЕЗ {Duration}", options.StartDelay);
+            await Task.Delay(options.StartDelay, cancellationToken);
+        }
         ValidateRequest(options);
         await rotatingTableClient.ReInit();
 

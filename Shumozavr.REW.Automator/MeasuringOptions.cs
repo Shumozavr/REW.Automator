@@ -9,6 +9,8 @@ public record MeasuringOptions(
     int Step,
     [property:DefaultValue(1)]
     int Acceleration,
+    [property:DefaultValue("00:00:10")]
+    TimeSpan StartDelay,
     [property:DefaultValue("test")]
     string Title,
     [property:DefaultValue("256k")]
