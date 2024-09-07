@@ -30,7 +30,8 @@ jobs:
       shell: bash
       run: |
         # Get the last tag on the current branch
-        git fetch --tags 
+        git fetch --tags
+        
         git status
         LAST_TAG=$(git describe --tags --abbrev=0)
 
