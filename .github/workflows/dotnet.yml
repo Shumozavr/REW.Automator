@@ -33,7 +33,7 @@ jobs:
         git fetch --tags
         
         git status
-        LAST_TAG=$(git describe --tags --abbrev=0)
+        LAST_TAG=$(git describe --tags --abbrev=0 --always)
 
         # If no tag exists, start from an initial version
         if [ -z "$LAST_TAG" ]; then
