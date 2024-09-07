@@ -16,12 +16,13 @@ jobs:
         kind: ['windows']
         include:
           - kind: windows
-            os: windows-latest
             target: win-x64
     runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-tags: 'true'
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -30,7 +31,6 @@ jobs:
       shell: bash
       run: |
         # Get the last tag on the current branch
-        git fetch --tags
         
         git status
         LAST_TAG=$(git describe --tags --abbrev=0 --always)
