@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Globalization;
+using Microsoft.Extensions.Logging;
 using Shumozavr.Common;
 using Shumozavr.REW.Client.Http;
 using Shumozavr.REW.Client.Http.Models.Measurement;
@@ -111,7 +112,7 @@ public class MeasureRecorderService(
     private async Task Measure(double currentAngle, string title, string length, IrWindowsOptions irWindowsOptions, CancellationToken cancellationToken)
     {
         logger.LogInformation("launching rew measure");
-        await measureClient.Measure($"{title} {currentAngle:N1}", length, cancellationToken);
+        await measureClient.Measure($"{title} {currentAngle.ToString("N1", CultureInfo.InvariantCulture)}", length, cancellationToken);
         var uuid = await measurementClient.GetSelectedMeasurementUuid(cancellationToken);
         var index = await measurementClient.GetSelectedMeasurementIndex(cancellationToken);
         logger.LogInformation("selected measurement uuid: {uuid}, index: {index}", uuid, index);
