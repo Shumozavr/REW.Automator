@@ -29,7 +29,7 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
-    - name: Git Tag
+    - name: GitTag
       shell: bash
       run: |
         # Get the last tag on the current branch
@@ -62,6 +62,7 @@ jobs:
         git push origin "$NEW_TAG"
 
         echo "Created new tag: $NEW_TAG"
+        echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
     - name: Publish
       shell: bash
       run: |
@@ -86,4 +87,5 @@ jobs:
       uses: ncipollo/release-action@v1.14.0
       with:
         artifacts: "*.gz,*.zip"
+        tag: '${{ steps.GitTag.outputs.new_tag }}'
         allowUpdates: true
