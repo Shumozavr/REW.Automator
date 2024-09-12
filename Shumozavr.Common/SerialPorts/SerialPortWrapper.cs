@@ -171,7 +171,7 @@ public sealed class SerialPortWrapper : ISerialPort
     {
         var port = new SerialPort(settings.PortName)
         {
-            BaudRate = 115200,
+            BaudRate = settings.BaudRate,
             ReadTimeout = SerialPort.InfiniteTimeout,
             WriteTimeout = (int)settings.WritePortTimeout.TotalMilliseconds,
 
