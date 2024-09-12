@@ -83,6 +83,10 @@ jobs:
 
           # Delete output directory
           rm -r "$release_name"
+          echo '${{steps}}'
+          echo '${{steps.GitTag}}'
+          echo '${{steps.GitTag.outputs}}'
+          echo '${{steps.GitTag.outputs.new_tag}}'
     - name: Create Release
       uses: ncipollo/release-action@v1.14.0
       with:
