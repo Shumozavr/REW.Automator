@@ -30,6 +30,7 @@ jobs:
       with:
         dotnet-version: 8.0.x
     - name: GitTag
+      id: git_tag
       shell: bash
       run: |
         # Get the last tag on the current branch
@@ -83,13 +84,9 @@ jobs:
 
           # Delete output directory
           rm -r "$release_name"
-          echo '${{steps}}'
-          echo '${{steps.GitTag}}'
-          echo '${{steps.GitTag.outputs}}'
-          echo '${{steps.GitTag.outputs.new_tag}}'
     - name: Create Release
       uses: ncipollo/release-action@v1.14.0
       with:
         artifacts: "*.gz,*.zip"
-        tag: '${{ steps.GitTag.outputs.new_tag }}'
+        tag: ${{ steps.git_tag.outputs.new_tag }}
         allowUpdates: true
