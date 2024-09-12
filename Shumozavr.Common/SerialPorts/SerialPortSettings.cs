@@ -13,4 +13,5 @@ public class SerialPortSettings : IOptionsValue
     public TimeSpan ReconnectDelay { get; set; } = TimeSpan.FromSeconds(3);
 
     public TimeSpan WritePortTimeout { get; set; } = TimeSpan.FromSeconds(2);
+    public int BaudRate { get; set; } = 115200;
 }
