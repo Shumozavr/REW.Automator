@@ -8,6 +8,7 @@
         <SelfContained>true</SelfContained>
         <PublishSingleFile>true</PublishSingleFile>
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+
     </PropertyGroup>
 
     <ItemGroup>
